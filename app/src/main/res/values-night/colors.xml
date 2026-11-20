@@ -1,4 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="window_bg">#0E151B</color>
+
+    <!-- Виджеты, тёмная тема -->
+    <color name="w_bg">#F516202A</color>
+    <color name="w_bg_solid">#16202A</color>
+    <color name="w_ink">#E3EBF1</color>
+    <color name="w_muted">#93A2AF</color>
+    <color name="w_free">#3FC3B7</color>
+    <color name="w_free_soft">#12322E</color>
+    <color name="w_busy">#3B4B58</color>
+    <color name="w_warn">#F0A262</color>
 </resources>

@@ -115,6 +115,21 @@ public class MainActivity extends Activity {
             });
         }
 
+        /** Настройки расчёта со страницы (JSON) — их читают виджеты. */
+        @JavascriptInterface
+        public void saveSettings(String json) {
+            getSharedPreferences(FreeTimeData.PREFS, MODE_PRIVATE)
+                    .edit()
+                    .putString(FreeTimeData.KEY_SETTINGS, json)
+                    .apply();
+        }
+
+        /** Перерисовать виджеты на рабочем столе. */
+        @JavascriptInterface
+        public void updateWidgets() {
+            WidgetUpdater.updateAll(getApplicationContext());
+        }
+
         @JavascriptInterface
         public void openAppSettings() {
             runOnUiThread(new Runnable() {

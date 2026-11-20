@@ -2,4 +2,14 @@
 <resources>
     <color name="ic_launcher_background">#0A877F</color>
     <color name="window_bg">#F1F4F6</color>
+
+    <!-- Виджеты, светлая тема -->
+    <color name="w_bg">#F5FFFFFF</color>
+    <color name="w_bg_solid">#FFFFFF</color>
+    <color name="w_ink">#13202A</color>
+    <color name="w_muted">#5A6875</color>
+    <color name="w_free">#0A877F</color>
+    <color name="w_free_soft">#DCF1EE</color>
+    <color name="w_busy">#C3CDD5</color>
+    <color name="w_warn">#A9500B</color>
 </resources>

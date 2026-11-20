@@ -275,6 +275,16 @@ details.settings summary { cursor: pointer; font-weight: 600; list-style-positio
   }
   function saveSettings() {
     try { localStorage.setItem(STORE_KEY, JSON.stringify(settings)); } catch (e) { /* storage unavailable */ }
+    pushSettings();
+  }
+
+  // Передать настройки виджетам и перерисовать их
+  function pushSettings() {
+    if (!bridge) return;
+    try {
+      if (typeof bridge.saveSettings === "function") bridge.saveSettings(JSON.stringify(settings));
+      if (typeof bridge.updateWidgets === "function") bridge.updateWidgets();
+    } catch (e) { /* старая версия приложения без виджетов */ }
   }
 
   var settings = loadSettings();
@@ -542,6 +552,7 @@ details.settings summary { cursor: pointer; font-weight: 600; list-style-positio
   function renderFoot() {
     var t = "Считаются события из выбранных календарей телефона на 7 дней вперёд, включая повторяющиеся. Не занимают время: события на весь день, события с отметкой «Свободен», отменённые и отклонённые встречи.";
     if (settings.workOn) t += " Рабочие часы " + settings.workStart + "–" + settings.workEnd + " по будням добавлены из настроек.";
+    t += " Виджеты: долгое нажатие на рабочем столе → Виджеты → «Свободное время».";
     t += " Приложение только читает календарь и не выходит в интернет.";
     $("foot").textContent = t;
   }
@@ -649,6 +660,7 @@ details.settings summary { cursor: pointer; font-weight: 600; list-style-positio
     state.status = state.calendars.length ? null : { kind: "info", text: "На телефоне не найдено ни одного календаря. Добавьте аккаунт Google или Outlook в настройках телефона." };
     renderCalendars();
     render();
+    pushSettings();
   }
 
   function checkDay() {

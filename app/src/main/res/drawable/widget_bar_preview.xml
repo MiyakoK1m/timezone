@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Картинка-заглушка шкалы дня для списка виджетов -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="240dp"
+    android:height="10dp"
+    android:viewportWidth="240"
+    android:viewportHeight="10">
+    <path
+        android:fillColor="#DCF1EE"
+        android:pathData="M5,0h230a5,5 0 0 1 0,10h-230a5,5 0 0 1 0,-10z" />
+    <path
+        android:fillColor="#C3CDD5"
+        android:pathData="M45,0h90v10h-90z M188,0h12v10h-12z" />
+    <path
+        android:fillColor="#0A877F"
+        android:pathData="M135,0h53v10h-53z M200,0h35a5,5 0 0 1 0,10h-35z" />
+</vector>

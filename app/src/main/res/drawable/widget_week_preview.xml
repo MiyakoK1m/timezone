@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Картинка-заглушка недельного графика для списка виджетов -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="280dp"
+    android:height="90dp"
+    android:viewportWidth="280"
+    android:viewportHeight="90">
+    <path android:fillColor="#DCF1EE" android:pathData="M14,10h12v70h-12z M54,10h12v70h-12z M94,10h12v70h-12z M134,10h12v70h-12z M174,10h12v70h-12z M214,10h12v70h-12z M254,10h12v70h-12z" />
+    <path android:fillColor="#0A877F" android:pathData="M14,62h12v18h-12z M54,18h12v62h-12z M94,14h12v66h-12z M134,50h12v30h-12z M174,50h12v30h-12z M214,46h12v34h-12z M254,50h12v30h-12z" />
+</vector>
