@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- корпус календаря -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M34,38h40a4,4 0 0 1 4,4v28a4,4 0 0 1 -4,4h-40a4,4 0 0 1 -4,-4v-28a4,4 0 0 1 4,-4z" />
+    <!-- шапка -->
+    <path
+        android:fillColor="#CDEEEA"
+        android:pathData="M34,38h40a4,4 0 0 1 4,4v4h-48v-4a4,4 0 0 1 4,-4z" />
+    <!-- кольца -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M41,33h4v9h-4z M63,33h4v9h-4z" />
+    <!-- свободное окно -->
+    <path
+        android:fillColor="#0A877F"
+        android:pathData="M38,56h20a2,2 0 0 1 2,2v6a2,2 0 0 1 -2,2h-20a2,2 0 0 1 -2,-2v-6a2,2 0 0 1 2,-2z" />
+    <!-- занятое время -->
+    <path
+        android:fillColor="#B3BFC9"
+        android:pathData="M64,56h8v10h-8z" />
+</vector>

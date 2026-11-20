@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Свободное время</title>
+<style>
+:root {
+  /* Layout: summary tiles → 7-day strip → selected day (bar + agenda) → settings. Free time is the accent; busy time is hatched grey. */
+  --bg: #F1F4F6;
+  --surface: #FFFFFF;
+  --ink: #13202A;
+  --muted: #5A6875;
+  --line: #DAE1E7;
+  --free: #0A877F;
+  --free-soft: #DCF1EE;
+  --busy: #B3BFC9;
+  --warn: #A9500B;
+  --warn-soft: #FBEADB;
+  /* Приложение без интернета: только системные шрифты телефона */
+  --font-display: "Google Sans", Roboto, system-ui, sans-serif;
+  --font-body: Roboto, system-ui, sans-serif;
+  --font-mono: "Roboto Mono", "Droid Sans Mono", ui-monospace, monospace;
+  --radius: 12px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0E151B;
+    --surface: #16202A;
+    --ink: #E3EBF1;
+    --muted: #93A2AF;
+    --line: #263441;
+    --free: #3FC3B7;
+    --free-soft: #11312D;
+    --busy: #455663;
+    --warn: #F0A262;
+    --warn-soft: #36251A;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0E151B;
+  --surface: #16202A;
+  --ink: #E3EBF1;
+  --muted: #93A2AF;
+  --line: #263441;
+  --free: #3FC3B7;
+  --free-soft: #11312D;
+  --busy: #455663;
+  --warn: #F0A262;
+  --warn-soft: #36251A;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.45;
+  -webkit-text-size-adjust: 100%;
+}
+.wrap { max-width: 760px; margin: 0 auto; padding: 20px 16px 40px; display: grid; gap: 16px; }
+header.top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+h1 { font-family: var(--font-display); font-weight: 600; font-size: 22px; letter-spacing: -0.01em; margin: 0 0 6px; text-wrap: balance; }
+.meta { color: var(--muted); font-size: 13px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.badge { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 500; color: var(--ink); border: 1px solid var(--line); background: var(--surface); }
+.badge .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--free); }
+.badge.example .dot { background: var(--warn); }
+button { font: inherit; color: inherit; }
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; min-height: 40px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; font-weight: 500; font-size: 14px; }
+.btn:hover:not([disabled]) { border-color: var(--free); }
+.btn.primary { background: var(--free); border-color: var(--free); color: var(--surface); }
+.btn[disabled] { opacity: .55; cursor: default; }
+:focus-visible { outline: 2px solid var(--free); outline-offset: 2px; }
+
+.banner { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; padding: 10px 14px; border-radius: var(--radius); background: var(--warn-soft); border: 1px solid var(--line); font-size: 14px; }
+.banner.info { background: var(--surface); color: var(--muted); }
+.banner span { max-width: 65ch; }
+
+.tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.tile { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; display: grid; gap: 4px; align-content: start; min-width: 0; }
+.tile.hero { grid-column: 1 / -1; border-left: 4px solid var(--free); }
+.tile .k { font-size: 12px; color: var(--muted); }
+.tile .v { font-family: var(--font-mono); font-weight: 500; font-size: 18px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.tile.hero .v { font-family: var(--font-display); font-size: 28px; font-weight: 600; color: var(--free); }
+.tile .s { font-size: 13px; color: var(--muted); }
+@media (min-width: 640px) {
+  .tiles { grid-template-columns: 1.3fr 1fr 1fr; }
+  .tile.hero { grid-column: auto; }
+}
+
+.strip { display: flex; gap: 6px; overflow-x: auto; padding: 2px 2px 6px; scrollbar-width: thin; }
+.day { flex: 1 0 62px; display: grid; gap: 3px; justify-items: center; padding: 8px 4px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; }
+.day .dw { font-size: 12px; color: var(--muted); }
+.day .dn { font-family: var(--font-mono); font-size: 17px; font-weight: 500; }
+.day .df { font-family: var(--font-mono); font-size: 11px; color: var(--free); white-space: nowrap; }
+.day .meter { width: 70%; height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; }
+.day .meter i { display: block; height: 100%; background: var(--free); }
+.day.weekend .dw { color: var(--warn); }
+.day[aria-pressed="true"] { border-color: var(--free); box-shadow: inset 0 0 0 1px var(--free); }
+
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; display: grid; gap: 12px; min-width: 0; }
+.panel h2 { font-size: 17px; margin: 0; font-weight: 600; text-wrap: balance; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.sub { font-size: 13px; color: var(--muted); margin: -6px 0 0; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { font-size: 12px; font-weight: 400; padding: 1px 8px; border-radius: 999px; background: var(--bg); border: 1px solid var(--line); color: var(--muted); }
+
+.timeline { display: grid; gap: 4px; }
+.bar { position: relative; height: 30px; border-radius: 8px; background: var(--free-soft); overflow: hidden; }
+.bar .b { position: absolute; top: 0; bottom: 0; background: repeating-linear-gradient(135deg, var(--busy) 0 3px, transparent 3px 7px); border-left: 1px solid var(--busy); border-right: 1px solid var(--busy); }
+.bar .f { position: absolute; top: 5px; bottom: 5px; background: var(--free); border-radius: 4px; }
+.bar .past { position: absolute; top: 0; bottom: 0; left: 0; background: var(--bg); opacity: .78; }
+.bar .now { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--ink); }
+.ticks { position: relative; height: 16px; font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+.ticks span { position: absolute; top: 0; transform: translateX(-50%); }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
+.legend i { display: inline-block; width: 12px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+.legend .lf { background: var(--free); }
+.legend .lb { background: repeating-linear-gradient(135deg, var(--busy) 0 2px, transparent 2px 4px); border: 1px solid var(--busy); }
+.legend .ls { background: var(--free-soft); border: 1px solid var(--line); }
+
+.agenda { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.agenda li { display: grid; grid-template-columns: 100px 1fr auto; gap: 10px; align-items: baseline; padding: 9px 12px; border-radius: 8px; }
+.agenda .t { font-family: var(--font-mono); font-size: 13px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.agenda .slot { background: var(--free-soft); border-left: 3px solid var(--free); }
+.agenda .slot .lbl { font-weight: 600; color: var(--free); }
+.agenda .slot .dur { font-family: var(--font-mono); font-size: 13px; font-weight: 500; white-space: nowrap; }
+.agenda .busy { color: var(--muted); border-left: 3px solid var(--busy); padding-top: 5px; padding-bottom: 5px; }
+.agenda .busy .lbl { overflow-wrap: anywhere; }
+.agenda .past { opacity: .5; }
+.empty { color: var(--muted); font-size: 14px; margin: 0; }
+@media (max-width: 400px) {
+  .agenda li { grid-template-columns: 92px 1fr; }
+  .agenda .slot .dur { grid-column: 2; }
+}
+
+details.settings { display: block; }
+details.settings summary { cursor: pointer; font-weight: 600; list-style-position: inside; }
+.form { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-top: 14px; }
+.field { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
+.field input, .field select { font: inherit; font-family: var(--font-mono); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; min-height: 42px; width: 100%; }
+.field input:disabled { opacity: .5; }
+.check { display: flex; gap: 10px; align-items: center; font-size: 14px; color: var(--ink); grid-column: 1 / -1; cursor: pointer; }
+.check input { width: 18px; height: 18px; accent-color: var(--free); }
+.note { font-size: 12px; color: var(--muted); max-width: 65ch; margin: 0; }
+.cals { grid-column: 1 / -1; display: grid; gap: 6px; }
+.cals .head { font-size: 13px; color: var(--muted); }
+.cal { display: grid; grid-template-columns: 20px 12px 1fr; gap: 10px; align-items: center; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); cursor: pointer; font-size: 14px; }
+.cal input { width: 18px; height: 18px; margin: 0; accent-color: var(--free); }
+.cal .sw { width: 12px; height: 12px; border-radius: 3px; }
+.cal .nm { min-width: 0; overflow-wrap: anywhere; }
+.cal .ac { display: block; font-size: 12px; color: var(--muted); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Свободное время</h1>
+      <div class="meta" id="meta"></div>
+    </div>
+    <button class="btn" id="refresh" type="button">Обновить</button>
+  </header>
+
+  <div id="banner"></div>
+
+  <section class="tiles" id="tiles" aria-label="Итоги"></section>
+
+  <nav class="strip" id="strip" aria-label="Дни недели"></nav>
+
+  <section class="panel" id="dayPanel" aria-live="polite"></section>
+
+  <details class="panel settings" id="settings">
+    <summary>Настройки расчёта</summary>
+    <div class="form">
+      <label class="field" for="dayStart">Начало дня
+        <input type="time" id="dayStart" step="900">
+      </label>
+      <label class="field" for="dayEnd">Конец дня
+        <input type="time" id="dayEnd" step="900">
+      </label>
+      <label class="field" for="minSlot">Окна не короче
+        <select id="minSlot">
+          <option value="15">15 мин</option>
+          <option value="30">30 мин</option>
+          <option value="45">45 мин</option>
+          <option value="60">1 ч</option>
+          <option value="90">1 ч 30 мин</option>
+          <option value="120">2 ч</option>
+        </select>
+      </label>
+      <label class="check" for="workOn">
+        <input type="checkbox" id="workOn">
+        Считать рабочие часы по будням занятыми
+      </label>
+      <label class="field" for="workStart">Работа с
+        <input type="time" id="workStart" step="900">
+      </label>
+      <label class="field" for="workEnd">Работа до
+        <input type="time" id="workEnd" step="900">
+      </label>
+      <div class="cals" id="cals"></div>
+    </div>
+  </details>
+
+  <p class="note" id="foot"></p>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var bridge = window.AndroidCalendar || null; // объект из MainActivity.java
+  var DAYS = 7;
+  var STORE_KEY = "freetime.settings.v1";
+  var RELOAD_MS = 5 * 60000;
+  var DW_SHORT = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
+  var DW_FULL = ["Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
+  var MON_GEN = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
+  // calIds: null — все видимые календари телефона; массив — выбранные вручную
+  var DEFAULTS = { dayStart: "06:00", dayEnd: "22:00", minSlot: 30, workOn: true, workStart: "09:00", workEnd: "18:00", calIds: null };
+
+  function $(id) { return document.getElementById(id); }
+  function pad(n) { return String(n).padStart(2, "0"); }
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+  function toMin(s) {
+    var m = /^(\d{1,2}):(\d{2})/.exec(s || "");
+    return m ? (+m[1]) * 60 + (+m[2]) : null;
+  }
+  function startOfDay(d) { var x = new Date(d); x.setHours(0, 0, 0, 0); return x; }
+  function addDays(d, n) { var x = new Date(d); x.setDate(x.getDate() + n); return x; }
+  function atMin(day, mins) { var x = new Date(day); x.setHours(0, mins, 0, 0); return x; }
+  function isoLocal(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) + "T00:00:00"; }
+  function fmtT(d) { return pad(d.getHours()) + ":" + pad(d.getMinutes()); }
+  function fmtDur(mins) {
+    mins = Math.round(mins);
+    var h = Math.floor(mins / 60), m = mins % 60;
+    if (!h) return m + " мин";
+    if (!m) return h + " ч";
+    return h + " ч " + m + " мин";
+  }
+  function fmtShort(mins) {
+    mins = Math.round(mins);
+    var h = Math.floor(mins / 60), m = mins % 60;
+    if (!h) return m + " мин";
+    return m ? h + " ч " + pad(m) : h + " ч";
+  }
+  function plural(n, one, few, many) {
+    var a = Math.abs(n) % 100, b = a % 10;
+    if (a > 10 && a < 20) return many;
+    if (b > 1 && b < 5) return few;
+    if (b === 1) return one;
+    return many;
+  }
+  function dateLabel(d) { return d.getDate() + " " + MON_GEN[d.getMonth()]; }
+  function relLabel(i) { return i === 0 ? "сегодня" : i === 1 ? "завтра" : ""; }
+  function shortText(s) { s = String(s || "").replace(/\s+/g, " ").trim(); return s.length > 160 ? s.slice(0, 157) + "…" : s; }
+
+  function loadSettings() {
+    try {
+      var raw = localStorage.getItem(STORE_KEY);
+      var s = raw ? JSON.parse(raw) : null;
+      return Object.assign({}, DEFAULTS, s && typeof s === "object" ? s : {});
+    } catch (e) {
+      return Object.assign({}, DEFAULTS);
+    }
+  }
+  function saveSettings() {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(settings)); } catch (e) { /* storage unavailable */ }
+  }
+
+  var settings = loadSettings();
+  var today0 = startOfDay(new Date());
+  var state = { source: "example", events: [], raw: [], calendars: [], updatedAt: null, truncated: false, status: null, selected: 0, busyRefresh: false };
+  var lastLoad = 0;
+
+  // ---------- data ----------
+  function exampleEvents() {
+    var ev = [];
+    for (var i = -1; i <= DAYS; i++) {
+      var d = addDays(today0, i), wd = d.getDay();
+      ev.push({ title: "Сон", start: atMin(d, 22 * 60), end: atMin(d, 30 * 60), allDay: false });
+      if (wd >= 1 && wd <= 5) ev.push({ title: "Выход на работу", start: atMin(d, 8 * 60 + 30), end: atMin(d, 8 * 60 + 40), allDay: false });
+      if (wd === 2 || wd === 5) ev.push({ title: "Пробежка", start: atMin(d, 18 * 60 + 45), end: atMin(d, 19 * 60 + 30), allDay: false });
+      if (wd === 6) ev.push({ title: "Велотренировка", start: atMin(d, 7 * 60), end: atMin(d, 9 * 60 + 30), allDay: false });
+      if (wd === 0) ev.push({ title: "Длинная пробежка", start: atMin(d, 17 * 60), end: atMin(d, 18 * 60 + 30), allDay: false });
+    }
+    return ev;
+  }
+
+  function parseDateOnly(s) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s || "");
+    return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null;
+  }
+
+  // Календари, события которых считаются занятым временем
+  function selectedCalIds() {
+    if (!state.calendars.length) return null;
+    var ids = Array.isArray(settings.calIds)
+      ? settings.calIds
+      : state.calendars.filter(function (c) { return c.visible; }).map(function (c) { return String(c.id); });
+    var set = {};
+    ids.forEach(function (id) { set[String(id)] = true; });
+    return set;
+  }
+
+  // Поля приходят из CalendarContract.Instances (см. MainActivity.getEvents)
+  function phoneEvents(items) {
+    var sel = selectedCalIds();
+    var out = [];
+    items.forEach(function (e) {
+      if (!e) return;
+      if (sel && !sel[String(e.calendarId)]) return;
+      if (e.status === 2) return;        // отменено
+      if (e.availability === 1) return;  // отмечено «Свободен»
+      if (e.selfStatus === 2) return;    // приглашение отклонено
+      var title = e.title || "Без названия";
+      if (e.allDay) {
+        // события на весь день хранятся в UTC-полночь
+        var a = new Date(e.begin), b = new Date(e.end);
+        out.push({ title: title, start: new Date(a.getUTCFullYear(), a.getUTCMonth(), a.getUTCDate()), end: new Date(b.getUTCFullYear(), b.getUTCMonth(), b.getUTCDate()), allDay: true });
+      } else {
+        if (!(e.end > e.begin)) return;
+        out.push({ title: title, start: new Date(e.begin), end: new Date(e.end), allDay: false });
+      }
+    });
+    return out;
+  }
+
+  function parseJson(s) {
+    try { return JSON.parse(s); } catch (e) { return null; }
+  }
+
+  function computeDay(i, now) {
+    var day = addDays(today0, i);
+    var ws = toMin(settings.dayStart), we = toMin(settings.dayEnd);
+    if (ws == null) ws = toMin(DEFAULTS.dayStart);
+    if (we == null) we = toMin(DEFAULTS.dayEnd);
+    if (we <= ws) we += 1440;
+    var wStart = atMin(day, ws), wEnd = atMin(day, we), next0 = addDays(day, 1);
+    var busy = [], allDay = [];
+
+    state.events.forEach(function (e) {
+      if (e.allDay) {
+        if (e.start < next0 && e.end > day) allDay.push(e.title);
+        return;
+      }
+      if (e.end > wStart && e.start < wEnd) {
+        busy.push({ kind: "event", title: e.title, start: e.start < wStart ? wStart : e.start, end: e.end > wEnd ? wEnd : e.end, oStart: e.start, oEnd: e.end });
+      }
+    });
+
+    var wd = day.getDay();
+    if (settings.workOn && wd >= 1 && wd <= 5) {
+      var a = toMin(settings.workStart), b = toMin(settings.workEnd);
+      if (a != null && b != null && b > a) {
+        var s = atMin(day, a), f = atMin(day, b);
+        if (f > wStart && s < wEnd) busy.push({ kind: "work", title: "Работа", start: s < wStart ? wStart : s, end: f > wEnd ? wEnd : f, oStart: s, oEnd: f });
+      }
+    }
+
+    busy.sort(function (x, y) { return x.start - y.start; });
+    var merged = [];
+    busy.forEach(function (b) {
+      var last = merged[merged.length - 1];
+      if (last && b.start <= last.end) { if (b.end > last.end) last.end = b.end; }
+      else merged.push({ start: b.start, end: b.end });
+    });
+
+    var slots = [];
+    function push(x, y) {
+      var mins = (y - x) / 60000;
+      if (mins >= settings.minSlot) slots.push({ start: x, end: y, mins: mins });
+    }
+    var cur = now > wStart ? (now < wEnd ? now : wEnd) : wStart;
+    merged.forEach(function (m) {
+      if (m.start > cur) push(cur, m.start);
+      if (m.end > cur) cur = m.end;
+    });
+    if (wEnd > cur) push(cur, wEnd);
+
+    return {
+      day: day, wStart: wStart, wEnd: wEnd, busy: busy, slots: slots, allDay: allDay,
+      freeMins: slots.reduce(function (acc, x) { return acc + x.mins; }, 0),
+      past: now >= wEnd ? "all" : now > wStart ? "partial" : "none"
+    };
+  }
+
+  // ---------- rendering ----------
+  function render() {
+    var now = new Date();
+    var nowR = new Date(Math.ceil(now.getTime() / 300000) * 300000);
+    var days = [];
+    for (var i = 0; i < DAYS; i++) days.push(computeDay(i, nowR));
+    if (state.selected >= DAYS) state.selected = 0;
+    renderMeta();
+    renderBanner();
+    renderTiles(days, now);
+    renderStrip(days);
+    renderDay(days[state.selected], now);
+    renderFoot();
+  }
+
+  function renderMeta() {
+    var m = $("meta");
+    if (state.source === "live" && state.updatedAt) {
+      var u = state.updatedAt;
+      var when = startOfDay(u).getTime() === today0.getTime() ? fmtT(u) : pad(u.getDate()) + "." + pad(u.getMonth() + 1) + " " + fmtT(u);
+      var n = selectedCalIds();
+      var count = n ? Object.keys(n).length : 0;
+      m.innerHTML = '<span class="badge"><span class="dot"></span>Календарь телефона</span><span>' +
+        (count ? count + " " + plural(count, "календарь", "календаря", "календарей") + " · " : "") + "обновлено в " + when + "</span>";
+    } else {
+      m.innerHTML = '<span class="badge example"><span class="dot"></span>Пример</span><span>это не ваши события</span>';
+    }
+    var btn = $("refresh");
+    btn.disabled = !bridge || state.busyRefresh;
+    btn.textContent = state.busyRefresh ? "Обновляю…" : "Обновить";
+  }
+
+  function renderBanner() {
+    var b = $("banner"), s = state.status;
+    if (!s) { b.innerHTML = ""; return; }
+    b.innerHTML = '<div class="banner' + (s.kind === "info" ? " info" : "") + '" role="status"><span>' + esc(s.text) + "</span>" +
+      (s.action ? '<button class="btn primary" type="button" id="bannerAction">' + esc(s.action.label) + "</button>" : "") + "</div>";
+    if (s.action) $("bannerAction").addEventListener("click", s.action.fn);
+  }
+
+  function renderTiles(days, now) {
+    var t = days[0];
+    var next = null, nextDay = 0;
+    for (var i = 0; i < days.length && !next; i++) {
+      for (var j = 0; j < days[i].slots.length; j++) {
+        if (days[i].slots[j].end > now) { next = days[i].slots[j]; nextDay = i; break; }
+      }
+    }
+    var week = days.reduce(function (a, d) { return a + d.freeMins; }, 0);
+
+    var todayV, todayS;
+    if (t.past === "all") {
+      todayV = "0 мин";
+      todayS = "день закончился в " + fmtT(t.wEnd);
+    } else {
+      todayV = t.freeMins ? fmtDur(t.freeMins) : "0 мин";
+      todayS = t.slots.length
+        ? t.slots.length + " " + plural(t.slots.length, "окно", "окна", "окон") + " до " + fmtT(t.wEnd)
+        : "окон от " + settings.minSlot + " мин не осталось";
+    }
+
+    var nextV = "—", nextS = "окон нет до конца недели";
+    if (next) {
+      var startsNow = next.start - now <= 5 * 60000;
+      var d = days[nextDay].day;
+      var dayTxt = nextDay === 0 ? "сегодня" : nextDay === 1 ? "завтра" : DW_SHORT[d.getDay()] + ", " + dateLabel(d);
+      if (startsNow) {
+        nextV = "сейчас – " + fmtT(next.end);
+        nextS = "свободно ещё " + fmtDur((next.end - now) / 60000);
+      } else {
+        nextV = fmtT(next.start) + "–" + fmtT(next.end);
+        nextS = dayTxt + " · " + fmtDur(next.mins);
+      }
+    }
+
+    $("tiles").innerHTML =
+      '<div class="tile hero"><span class="k">Сегодня свободно</span><span class="v">' + todayV + '</span><span class="s">' + todayS + "</span></div>" +
+      '<div class="tile"><span class="k">Ближайшее окно</span><span class="v">' + nextV + '</span><span class="s">' + nextS + "</span></div>" +
+      '<div class="tile"><span class="k">За 7 дней</span><span class="v">' + fmtDur(week) + '</span><span class="s">окна от ' + settings.minSlot + " мин</span></div>";
+  }
+
+  function renderStrip(days) {
+    $("strip").innerHTML = days.map(function (d, i) {
+      var span = (d.wEnd - d.wStart) / 60000;
+      var pct = span > 0 ? Math.round((d.freeMins / span) * 100) : 0;
+      var wd = d.day.getDay();
+      var aria = (relLabel(i) ? relLabel(i) + ", " : "") + DW_FULL[wd].toLowerCase() + ", " + dateLabel(d.day) + ": свободно " + fmtDur(d.freeMins);
+      return '<button type="button" class="day' + (wd === 0 || wd === 6 ? " weekend" : "") + '" data-i="' + i + '" aria-pressed="' + (i === state.selected) + '" aria-label="' + esc(aria) + '">' +
+        '<span class="dw">' + (i === 0 ? "Сег" : DW_SHORT[wd]) + "</span>" +
+        '<span class="dn">' + d.day.getDate() + "</span>" +
+        '<span class="df">' + fmtShort(d.freeMins) + "</span>" +
+        '<span class="meter"><i style="width:' + pct + '%"></i></span></button>';
+    }).join("");
+  }
+
+  function renderDay(d, now) {
+    var i = state.selected;
+    var span = d.wEnd - d.wStart;
+    function pos(t) { return Math.max(0, Math.min(100, ((t - d.wStart) / span) * 100)); }
+
+    var bar = "";
+    d.busy.forEach(function (b) { bar += '<span class="b" style="left:' + pos(b.start) + "%;width:" + (pos(b.end) - pos(b.start)) + '%"></span>'; });
+    d.slots.forEach(function (s) { bar += '<span class="f" style="left:' + pos(s.start) + "%;width:" + (pos(s.end) - pos(s.start)) + '%"></span>'; });
+    if (now > d.wStart) bar += '<span class="past" style="width:' + pos(now) + '%"></span>';
+    if (now > d.wStart && now < d.wEnd) bar += '<span class="now" style="left:' + pos(now) + '%"></span>';
+
+    var ws = d.wStart.getHours() * 60 + d.wStart.getMinutes();
+    var spanMin = span / 60000;
+    var step = spanMin <= 10 * 60 ? 60 : spanMin <= 18 * 60 ? 120 : 240;
+    var ticks = "";
+    for (var m = Math.ceil(ws / step) * step; m <= ws + spanMin; m += step) {
+      ticks += '<span style="left:' + (((m - ws) / spanMin) * 100) + '%">' + pad(Math.floor(m / 60) % 24) + "</span>";
+    }
+
+    var items = [];
+    d.busy.forEach(function (b) { items.push({ kind: b.kind, start: b.start, end: b.end, label: b.title, ts: b.oStart, te: b.oEnd }); });
+    d.slots.forEach(function (s) { items.push({ kind: "slot", start: s.start, end: s.end, mins: s.mins }); });
+    items.sort(function (a, b) { return (a.start - b.start) || (a.kind === "slot" ? 1 : -1); });
+
+    var list = items.map(function (it) {
+      if (it.kind === "slot") {
+        return '<li class="slot"><span class="t">' + fmtT(it.start) + "–" + fmtT(it.end) + '</span><span class="lbl">Свободно</span><span class="dur">' + fmtDur(it.mins) + "</span></li>";
+      }
+      var past = it.end <= now ? " past" : "";
+      return '<li class="busy' + past + '"><span class="t">' + fmtT(it.ts) + "–" + fmtT(it.te) + '</span><span class="lbl">' + esc(it.label) +
+        (it.kind === "work" ? ' <span class="chip">из настроек</span>' : "") + "</span></li>";
+    }).join("");
+
+    var empty = "";
+    if (d.past === "all") empty = '<p class="empty">Этот день уже закончился: после ' + fmtT(d.wEnd) + " окна не считаются.</p>";
+    else if (!d.slots.length) empty = '<p class="empty">Свободных окон от ' + settings.minSlot + " мин нет.</p>";
+
+    var rel = relLabel(i);
+    var chips = d.allDay.length ? '<div class="chips">' + d.allDay.map(function (t) { return '<span class="chip">Весь день: ' + esc(t) + "</span>"; }).join("") + "</div>" : "";
+
+    $("dayPanel").innerHTML =
+      "<h2>" + DW_FULL[d.day.getDay()] + ", " + dateLabel(d.day) + (rel ? ' <span class="chip">' + rel + "</span>" : "") + "</h2>" +
+      '<p class="sub">Свободно ' + fmtDur(d.freeMins) + " · считаю с " + fmtT(d.wStart) + " до " + fmtT(d.wEnd) + "</p>" +
+      chips +
+      '<div class="timeline"><div class="bar" role="img" aria-label="Занятость с ' + fmtT(d.wStart) + " до " + fmtT(d.wEnd) + '">' + bar + '</div><div class="ticks" aria-hidden="true">' + ticks + "</div></div>" +
+      '<div class="legend"><span><i class="lf"></i>свободное окно</span><span><i class="lb"></i>занято</span><span><i class="ls"></i>промежуток короче ' + settings.minSlot + " мин</span></div>" +
+      empty +
+      (list ? '<ul class="agenda">' + list + "</ul>" : "");
+  }
+
+  function renderFoot() {
+    var t = "Считаются события из выбранных календарей телефона на 7 дней вперёд, включая повторяющиеся. Не занимают время: события на весь день, события с отметкой «Свободен», отменённые и отклонённые встречи.";
+    if (settings.workOn) t += " Рабочие часы " + settings.workStart + "–" + settings.workEnd + " по будням добавлены из настроек.";
+    t += " Приложение только читает календарь и не выходит в интернет.";
+    $("foot").textContent = t;
+  }
+
+  // ---------- settings ----------
+  function syncWork() {
+    $("workStart").disabled = !settings.workOn;
+    $("workEnd").disabled = !settings.workOn;
+  }
+  function bindSettings() {
+    ["dayStart", "dayEnd", "workStart", "workEnd"].forEach(function (id) {
+      var el = $(id);
+      el.value = settings[id];
+      el.addEventListener("change", function () {
+        if (toMin(el.value) != null) { settings[id] = el.value; saveSettings(); render(); }
+        else el.value = settings[id];
+      });
+    });
+    var ms = $("minSlot");
+    ms.value = String(settings.minSlot);
+    ms.addEventListener("change", function () { settings.minSlot = +ms.value || 30; saveSettings(); render(); });
+    var wo = $("workOn");
+    wo.checked = !!settings.workOn;
+    wo.addEventListener("change", function () { settings.workOn = wo.checked; syncWork(); saveSettings(); render(); });
+    syncWork();
+  }
+
+  // ---------- календарь телефона ----------
+  function setExample() {
+    state.source = "example";
+    state.events = exampleEvents();
+    state.updatedAt = null;
+  }
+
+  function renderCalendars() {
+    var box = $("cals");
+    if (!state.calendars.length) { box.innerHTML = ""; return; }
+    var sel = selectedCalIds() || {};
+    box.innerHTML = '<span class="head">Какие календари учитывать</span>' + state.calendars.map(function (c) {
+      var id = "cal-" + c.id;
+      return '<label class="cal" for="' + id + '"><input type="checkbox" id="' + id + '" data-cal="' + esc(c.id) + '"' + (sel[String(c.id)] ? " checked" : "") + ">" +
+        '<span class="sw" style="background:' + esc(c.color) + '"></span>' +
+        '<span class="nm">' + esc(c.name || "Без названия") + '<span class="ac">' + esc(c.account || c.accountType || "") + "</span></span></label>";
+    }).join("");
+  }
+
+  function onCalToggle(e) {
+    var el = e.target;
+    if (!el || !el.hasAttribute || !el.hasAttribute("data-cal")) return;
+    var ids = [];
+    Array.prototype.forEach.call($("cals").querySelectorAll("input[data-cal]"), function (x) {
+      if (x.checked) ids.push(x.getAttribute("data-cal"));
+    });
+    settings.calIds = ids;
+    saveSettings();
+    state.events = phoneEvents(state.raw);
+    render();
+  }
+
+  function askPermission() {
+    try { bridge.requestPermission(); } catch (e) { /* мост недоступен */ }
+  }
+  function openSettings() {
+    try { bridge.openAppSettings(); } catch (e) { /* мост недоступен */ }
+  }
+
+  function loadFromPhone() {
+    if (!bridge) {
+      setExample();
+      state.status = { kind: "info", text: "Эта страница читает календарь только внутри Android-приложения. Сейчас показан пример." };
+      render();
+      return;
+    }
+    var allowed = false;
+    try { allowed = bridge.hasPermission(); } catch (e) { allowed = false; }
+    if (!allowed) {
+      setExample();
+      state.status = { kind: "warn", text: "Разрешите приложению читать календарь телефона, чтобы увидеть свои свободные окна.", action: { label: "Разрешить доступ", fn: askPermission } };
+      render();
+      return;
+    }
+
+    var cals = null, ev = null;
+    try {
+      cals = parseJson(bridge.getCalendars());
+      ev = parseJson(bridge.getEvents(String(addDays(today0, -1).getTime()), String(addDays(today0, DAYS + 1).getTime())));
+    } catch (e) {
+      cals = { ok: false, error: String((e && e.message) || e) };
+    }
+    lastLoad = Date.now();
+
+    if (!cals || !cals.ok || !ev || !ev.ok) {
+      var why = (cals && cals.error) || (ev && ev.error) || "нет ответа";
+      var stale = state.source === "live" && state.updatedAt ? " Показаны данные от " + fmtT(state.updatedAt) + "." : "";
+      state.status = { kind: "error", text: "Не удалось прочитать календарь телефона (" + shortText(why) + "). Нажмите «Обновить»." + stale };
+      render();
+      return;
+    }
+
+    state.calendars = cals.items || [];
+    state.raw = ev.items || [];
+    state.events = phoneEvents(state.raw);
+    state.source = "live";
+    state.updatedAt = new Date();
+    state.status = state.calendars.length ? null : { kind: "info", text: "На телефоне не найдено ни одного календаря. Добавьте аккаунт Google или Outlook в настройках телефона." };
+    renderCalendars();
+    render();
+  }
+
+  function checkDay() {
+    var t0 = startOfDay(new Date());
+    if (t0.getTime() === today0.getTime()) return false;
+    today0 = t0;
+    state.selected = 0;
+    if (state.source === "example") state.events = exampleEvents();
+    return true;
+  }
+
+  // Вызываются из MainActivity.java
+  window.onCalendarPermission = function (granted, canAskAgain) {
+    if (granted) { loadFromPhone(); return; }
+    setExample();
+    state.status = canAskAgain
+      ? { kind: "warn", text: "Без доступа к календарю показывается только пример.", action: { label: "Разрешить доступ", fn: askPermission } }
+      : { kind: "warn", text: "Доступ к календарю запрещён. Включите его: Настройки → Приложения → Свободное время → Разрешения → Календарь.", action: { label: "Открыть настройки", fn: openSettings } };
+    render();
+  };
+  window.onAppResume = function () {
+    checkDay();
+    loadFromPhone();
+  };
+
+  // ---------- запуск ----------
+  bindSettings();
+  $("strip").addEventListener("click", function (e) {
+    var b = e.target.closest("button.day");
+    if (!b) return;
+    state.selected = +b.getAttribute("data-i");
+    render();
+  });
+  $("refresh").addEventListener("click", loadFromPhone);
+  $("cals").addEventListener("change", onCalToggle);
+
+  setExample();
+  loadFromPhone();
+
+  setInterval(function () {
+    var changed = checkDay();
+    if (bridge && (changed || Date.now() - lastLoad > RELOAD_MS)) loadFromPhone();
+    else render();
+  }, 60000);
+})();
+</script>
+</body>
+</html>
