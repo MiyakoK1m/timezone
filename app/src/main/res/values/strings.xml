@@ -1,4 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Свободное время</string>
+
+    <string name="widget_now_name">Сейчас</string>
+    <string name="widget_now_desc">Свободны вы сейчас или заняты и до какого времени</string>
+    <string name="widget_slots_name">Свободные окна</string>
+    <string name="widget_slots_desc">Шкала дня и ближайшие свободные окна</string>
+    <string name="widget_week_name">Неделя</string>
+    <string name="widget_week_desc">Сколько свободного времени в каждый из 7 дней</string>
 </resources>
